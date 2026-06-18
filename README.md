@@ -5,3 +5,5 @@
 確保專案結構中包含所有必需的本地端套件與圖片資源（包含圖示與調色盤資源）。
 
 直接使用瀏覽器開啟 index.html 即可開始使用。
+
+https://ssli73.github.io/Web-Canvas-Painter/
