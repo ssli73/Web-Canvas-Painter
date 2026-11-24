@@ -4,9 +4,9 @@
 <title>繪圖功能</title>
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
-<script src="https://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
-<link type="text/css" rel="stylesheet" href="https://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css" />
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"></script>
+<link type="text/css" rel="stylesheet" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" />
 <style>
 	body{
 		background:#F5F3E5;
@@ -39,10 +39,9 @@
 		background-color:#97CBFF;
 	}	
 </style>
- <script>
+<script>
 	(function(window, undefined){
-	 	var tools = new Object()
-	 	var clones = new Array();
+	 	var tools = new Object();
 	 	
 	 	window['$C'] = function(ctx){
 	 		var ret = new PaintTools(ctx);
@@ -76,43 +75,19 @@
 	 		}
 	 	};
 	 	
-	 	PaintTools.prototype.pushCanvas = function(){
-	 		clones.push(this.ctx.getImageData(0, 0, this.ctx.canvas.width, this.ctx.canvas.height));
-	 	};
-	 	
-	 	PaintTools.prototype.popCanvas = function(){
-	 		if(clones.length>0) {
-	 			this.ctx.putImageData(clones.pop(), 0, 0);
-	 		}
-	 	};
-	 	
-	 	PaintTools.prototype.restoreCanvas = function(){
-	 		if(clones.length>0) {
-	 			this.ctx.putImageData(clones[0], 0, 0);
-	 		}
-	 	};
-	 	
-	 	PaintTools.prototype.dropCanvas = function(){
-	 		if(clones.length>0) {
-	 			clones.pop();
-	 		}
-	 	}
-	 	
 	 	//畫筆
 	 	var drawLine = {
 	 		type: 'drawLine',
 	 		run: function(x, y, x1, y1){
 	 			this.ctx.beginPath();
-				
-				// 讓線條兩端變圓
-				this.ctx.lineCap = "round"; 
-				// 讓線條轉折處變圓				
-				this.ctx.lineJoin = "round"; 
-				
+	 			
+	 			//讓線條兩端變圓
+	 	        this.ctx.lineCap = "round";  
+	 	     	//讓線條轉折處變圓
+	 	        this.ctx.lineJoin = "round"; 
+	 			
 	 			this.ctx.moveTo(x,y);
 	 			this.ctx.lineTo(x1,y1);
-				//刪除這一行，畫線不需要閉合
-	 			//this.ctx.closePath();
 	 			this.ctx.stroke();
 	 		}
 	 	}
@@ -132,7 +107,7 @@
 		var strokeCircle ={
 	 		type: 'strokeCircle',
 	 		run: function(x1, y1, x2, y2) {
-	 			var radius = Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2), 2);
+	 			var radius = Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2));
 	 			this.ctx.beginPath();
 	 			this.ctx.arc(x2, y2, radius, 0, 2 * Math.PI, true);
 	 			this.ctx.closePath();
@@ -168,14 +143,13 @@
 	 	var drawArrow = {
 	 		type: 'drawArrow',
 	 		run: function(x, y, x1, y1){
-	 		    
 	 		    var theta = 30;
 		        var headken = 15;
 		        if($("#lineWidth").val() == '5')
 		        	headken = 25;
 		        else if($("#lineWidth").val() == '7')
 		        	headken = 30;
-		        var angle = Math.atan2(y - y1, x - x1) * 180/ Math.PI;
+		        var angle = Math.atan2(y - y1, x - x1) * 180 / Math.PI;
 				var angle1 = (angle + theta) * Math.PI / 180;
 				var angle2 = (angle - theta) * Math.PI / 180;
 				var topX = headken * Math.cos(angle1);
@@ -200,8 +174,8 @@
 	 			this.ctx.stroke();
 	 		}
 	 	}
-		
-		//直線
+	 	
+	 	//直線
 	 	var drawStraightLine = {
 	 		type: 'drawStraightLine',
 	 		run: function(x, y, x1, y1){
@@ -215,23 +189,26 @@
 	 })(window);
 	 
 	$(function(){
-		$(".screenCanvas").css('height', ($(window).height()-20) + 'px');
+		// 動態調整畫面高度（支援視窗縮放）
+		function resizeScreen() {
+			$(".screenCanvas").css('height', ($(window).height() - 20) + 'px');
+		}
+		resizeScreen();
+		$(window).on('resize', resizeScreen);
+
 		var canvas = $('#canvas');
 		var context = canvas[0].getContext('2d');
-		var draftCanvas = $('#draftCanvas'); // 新增這行：取得草稿層
-		var draftContext = draftCanvas[0].getContext('2d'); // 新增這行：取得草稿層的畫筆
+		var draftCanvas = $('#draftCanvas');
+		var draftContext = draftCanvas[0].getContext('2d');
 		var drawing = false;
+		var isEraser = false;
 		var queue = new Array();
 		var cPushArray = new Array();
 		var start = new Array();
 		var cStep = -1;
 		var scale = 1;
-		var basicW = 0;
-		var basicH = 0;
-		var imageW = 0;
-		var imageH = 0;
 		
-		// 【重要】告訴瀏覽器：當手指在畫布上滑動時，不要觸發網頁的捲動或縮放
+		// 告訴瀏覽器：當手指在畫布上滑動時，不要觸發網頁的捲動或縮放
 		draftCanvas[0].style.touchAction = 'none';
 		
 		// 判斷當前工具是否需要用到「透明草稿層」
@@ -239,26 +216,61 @@
 			return type === 'strokeRect' || type === 'strokeCircle' || type === 'drawArrow' || type === 'drawStraightLine';
 		}
 
+		// 套用無損視覺縮放（只調整 CSS 顯示大小，不更動底圖實際像素）
+		function applyZoom() {
+			var cssW = Math.round(canvas[0].width * scale);
+			var cssH = Math.round(canvas[0].height * scale);
+			canvas.css({ width: cssW + 'px', height: cssH + 'px' });
+			draftCanvas.css({ width: cssW + 'px', height: cssH + 'px' });
+
+			// 縮放時若裁切框正在顯示，先隱藏避免座標錯位
+			if ($("#selectDiv").is(":visible")) {
+				$("#selectDiv").hide();
+				$("#x1").val("X");
+			}
+		}
+
+		// 將指標事件座標換算回 Canvas 真實像素座標（支援視覺縮放與拖出邊界）
+		function getCanvasPos(e) {
+			var rect = draftCanvas[0].getBoundingClientRect();
+			var scaleX = rect.width ? (draftCanvas[0].width / rect.width) : 1;
+			var scaleY = rect.height ? (draftCanvas[0].height / rect.height) : 1;
+			return {
+				x: (e.clientX - rect.left) * scaleX,
+				y: (e.clientY - rect.top) * scaleY
+			};
+		}
+
 		// 1. 畫筆落下
 		draftCanvas[0].addEventListener('pointerdown', function(e) {
+			// 滑鼠只回應左鍵，避免右鍵誤畫
+			if (e.pointerType === 'mouse' && e.button !== 0) return;
+
 			e.preventDefault();
-			var x = e.offsetX;
-			var y = e.offsetY;
+			var pos = getCanvasPos(e);
 
 			if (!drawing && tool.drawType == 'drawText') {
 				e.stopPropagation();
+				tool.ctx = context;
 				tool.ctx.textBaseline = 'middle';
 				inputWord();
 				drawing = true;
-				start = [x, y];
+				start = [pos.x, pos.y];
+				return;
 			}
 			
 			if (!drawing && tool.drawType != 'drawText') {
+				// 鎖定指標，拖出畫布邊界不斷筆
+				try {
+					draftCanvas[0].setPointerCapture(e.pointerId);
+				} catch (err) {}
+
 				draftCanvas[0].dataset.cursor = draftCanvas[0].style.cursor;
 				draftCanvas[0].style.cursor = 'crosshair';
 				drawing = true;
+				queue = [];
 				
-				// 核心魔法：根據工具切換畫布！
+				// 根據工具切換畫布
 				if (isShapeTool(tool.drawType)) {
 					tool.ctx = draftContext; // 形狀工具：畫在草稿層
 				} else {
@@ -268,8 +280,8 @@
 				var pressureLine = $("#lineWidth").val() * (e.pointerType === 'pen' ? e.pressure * 2 : 1);
 				tool.ctx.lineWidth = pressureLine;
 				
-				tool.execute(x, y, x, y);
-				queue.push([x, y]);
+				tool.execute(pos.x, pos.y, pos.x, pos.y);
+				queue.push([pos.x, pos.y]);
 			}
 		});
 
@@ -278,23 +290,21 @@
 			e.preventDefault();
 			if (drawing && tool.drawType != 'drawText') {
 				var old = queue.shift();
+				if (!old) return;
 				
 				if (isShapeTool(tool.drawType)) {
-					// 核心魔法：只要擦掉透明玻璃就好！不需要再讀寫龐大的底圖
 					draftContext.clearRect(0, 0, draftCanvas[0].width, draftCanvas[0].height);
 					queue.push(old);
 				}
 				
-				var x = e.offsetX;
-				var y = e.offsetY;
-				
+				var pos = getCanvasPos(e);
 				var pressureLine = $("#lineWidth").val() * (e.pointerType === 'pen' ? e.pressure * 2 : 1);
 				tool.ctx.lineWidth = pressureLine;
 				
-				tool.execute(old[0], old[1], x, y);
+				tool.execute(old[0], old[1], pos.x, pos.y);
 				
 				if (tool.drawType == 'drawLine') {
-					queue.push([x, y]);
+					queue.push([pos.x, pos.y]);
 				}
 			}
 		});
@@ -304,158 +314,163 @@
 			if (drawing && tool.drawType == 'drawText') {
 				drawing = false;
 			} else if (drawing && tool.drawType != 'drawText') {
+				try {
+					if (draftCanvas[0].hasPointerCapture && draftCanvas[0].hasPointerCapture(e.pointerId)) {
+						draftCanvas[0].releasePointerCapture(e.pointerId);
+					}
+				} catch (err) {}
+
 				draftCanvas[0].style.cursor = draftCanvas[0].dataset.cursor || 'default';
 				var old = queue.shift();
-				var x = e.offsetX;
-				var y = e.offsetY;
+				var pos = getCanvasPos(e);
+
+				if (old) {
+					if (isShapeTool(tool.drawType)) {
+						draftContext.clearRect(0, 0, draftCanvas[0].width, draftCanvas[0].height);
+					}
+					tool.execute(old[0], old[1], pos.x, pos.y);
+				}
 				
-				tool.execute(old[0], old[1], x, y);
-				
-				// 核心魔法：如果是草稿層，現在要把結果印到底圖上
+				// 如果是草稿層，把最終結果印回主畫布
 				if (isShapeTool(tool.drawType)) {
-					context.drawImage(draftCanvas[0], 0, 0); // 印上主畫布
-					draftContext.clearRect(0, 0, draftCanvas[0].width, draftCanvas[0].height); // 洗掉玻璃
-					tool.ctx = context; // 切回主畫布
+					context.drawImage(draftCanvas[0], 0, 0);
+					draftContext.clearRect(0, 0, draftCanvas[0].width, draftCanvas[0].height);
+					tool.ctx = context;
 				}
 				
 				drawing = false;
-				cPush(); // 存入歷史紀錄
+				cPush();
 			}
 		}
 
 		draftCanvas[0].addEventListener('pointerup', endDrawing);
-		draftCanvas[0].addEventListener('pointerleave', endDrawing);
 		draftCanvas[0].addEventListener('pointercancel', endDrawing);
 		
 		var tool = $C(context);
 		
-		//暫存畫布
+		// 暫存畫布歷史紀錄
 		function cPush() {
 			cStep++;
-    
-			// 如果在復原的狀態下又畫了新東西，就捨棄掉後面的歷史紀錄
+		
+			// 如果在復原的狀態下又做了新動作，捨棄後面的歷史紀錄
 			if (cStep < cPushArray.length) {
 				cPushArray.length = cStep;
 			}
-				
-			// 取得當前畫布的像素資料 (ImageData) 並存入陣列
+		
+			// 存入當前真實像素的 ImageData
 			cPushArray.push(context.getImageData(0, 0, canvas[0].width, canvas[0].height));
-			
+		
 			// 限制最多記錄 10 步 (加上初始狀態，陣列長度維持在 11 以內)
 			if (cPushArray.length > 11) {
-				 cPushArray.shift(); // 直接移除最舊的那一筆紀錄
-				 cStep--;
+				cPushArray.shift();
+				cStep--;
 			}
-			
+		
 			// 更新按鈕狀態
 			if (cStep > 0) {
-			   $("#undo").removeClass('selectedTool').attr('disabled', false);
+				$("#undo").removeClass('selectedTool').attr('disabled', false);
+			} else {
+				$("#undo").addClass('selectedTool').attr('disabled', true);
 			}
-			// 只要有新動作，Redo 就不該被觸發
 			$("#redo").addClass('selectedTool').attr('disabled', true);
 		}
-	 
-	    //回到上一個動作
+
+		// 還原歷史紀錄（自動同步不同尺寸：裁切、旋轉、加空白皆可 Undo/Redo）
+		function restoreHistory(imgData) {
+			$("#selectDiv").hide();
+			$("#x1").val("X");
+
+			if (canvas[0].width !== imgData.width || canvas[0].height !== imgData.height) {
+				canvas.attr('width', imgData.width);
+				canvas.attr('height', imgData.height);
+				draftCanvas.attr('width', imgData.width);
+				draftCanvas.attr('height', imgData.height);
+				applyZoom();
+				initPaint();
+			}
+			context.putImageData(imgData, 0, 0);
+		}
+
+		// 回到上一個動作
 		function cUndo() {
 			if (cStep > 0) {
 				cStep--;
-				// 直接將像素陣列倒回畫布，零延遲！
-				context.putImageData(cPushArray[cStep], 0, 0);
+				restoreHistory(cPushArray[cStep]);
 				
-				// 更新按鈕狀態
 				$("#redo").removeClass('selectedTool').attr('disabled', false);
 				if (cStep === 0) {
 					$("#undo").addClass('selectedTool').attr('disabled', true);
 				}
 			}
 		}
-		
-		//回到下一個動作
+
+		// 回到下一個動作
 		function cRedo() {
 			if (cStep < cPushArray.length - 1) {
 				cStep++;
-				// 直接將像素陣列倒回畫布
-				context.putImageData(cPushArray[cStep], 0, 0);
+				restoreHistory(cPushArray[cStep]);
 				
-				// 更新按鈕狀態
 				$("#undo").removeClass('selectedTool').attr('disabled', false);
 				if (cStep === cPushArray.length - 1) {
-				   $("#redo").addClass('selectedTool').attr('disabled', true);
+					$("#redo").addClass('selectedTool').attr('disabled', true);
 				}
 			}
 		}
+
+		// 快捷鍵：Ctrl+Z 復原、Ctrl+Y / Ctrl+Shift+Z 重做
+		$(document).on('keydown', function(e) {
+			var tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+			if ($('#canvasDialog').hasClass('ui-dialog-content') && $('#canvasDialog').dialog('isOpen')) return;
+
+			if (e.ctrlKey || e.metaKey) {
+				var key = (e.key || '').toLowerCase();
+				if (key === 'z' && !e.shiftKey) {
+					e.preventDefault();
+					cUndo();
+				} else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+					e.preventDefault();
+					cRedo();
+				}
+			}
+		});
 		
-		//存檔作業
+		// 存檔作業
 		function cSave(){
-			//顯示base64格式
-		   alert(canvas[0].toDataURL('image/jpeg'));
+			// 顯示 base64 格式
+			alert(canvas[0].toDataURL('image/jpeg'));
 		}
 		
-		//載入底圖
-		drawImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA0EAAAHjCAIAAABq1INCAAAAA3NCSVQICAjb4U/gAAABmHpUWHRSYXcgcHJvZmlsZSB0eXBlIEFQUDEAADiNzVNJbsMwDLz7FXkCF4mSn+M4UhGgaIv8/9ChJTtOkDa5FKgIm9R4uMoa3spHuZznw9fls57fy3DwZZaHMIZRJiLK1JYSsRC7xrutrpVhCYzU99K0jTlR2PGmpuceM4JhapzwNAd/jS1OWNOqQBBjoke5yYvc5QitwpZshxftVrzFp16T0BS8B+l4Xvte22djHTWaGVvUrAGVm6J+Dar4Qr9LT9LyyrW/KPDNHbvtmze/dTZ6N3/ro5iAxCvO1iw+3uGlWZLv4sg2U9nPRnocoDd4ss2zzTxv/g/3tZ5yrWUBwhQM/5YtG95Y3HlHeHtlEfWFRRR2s+IihinN+CtTl0pHyEgzM1UWiGtffmQzJ+jAE8cFy/icsTtB6iLKSUSCCBcJ4BdgZauEe9a05C3Im6mAExArcPl7qXX28bDfQx/acgtY/MS8U5yjv8HC+XDcTfXnlTsbV+Upl1buC3E3Lr/EPfnNm6ndS+/FOyGtREeZn7n/w5UqehqHb9AiITX/x81LAAAI2ElEQVR4nO3WQQ0AIBDAMMC/50MDL7KkVbDn9swsAABSzu8AAACeeTgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0eDgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0eDgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0');
-		
-		//載入底圖
+		// 載入底圖
 		function drawImage(pic) {
-			// 判斷傳入的是否為歷史紀錄的 ImageData 物件
-			if (pic instanceof ImageData) {
-				// 1. 建立一個臨時的 Canvas 來轉換 ImageData
-				var tempCanvas = document.createElement('canvas');
-				tempCanvas.width = pic.width;
-				tempCanvas.height = pic.height;
-				tempCanvas.getContext('2d').putImageData(pic, 0, 0);
+			if (!pic) return;
 
-				// 2. 計算縮放後的尺寸
-				var newW = basicW * scale;
-				var newH = basicH * scale;
-
-				// 3. 同步調整雙層畫布大小
-				canvas.attr('width', newW);
-				canvas.attr('height', newH);
-				if (typeof draftCanvas !== 'undefined') {
-					draftCanvas.attr('width', newW);
-					draftCanvas.attr('height', newH);
-				}
-
-				// 4. 將臨時 Canvas 縮放並繪製到主畫布上
-				context.drawImage(tempCanvas, 0, 0, pic.width, pic.height, 0, 0, newW, newH);
-
-				// 5. 重新初始化畫筆並結束，不需重複執行底下的 Image 載入邏輯
-				initPaint();
-				return; 
-			}
-
-			// --- 以下為原本處理 URL 字串的邏輯 ---
 			var image = new Image();
 			image.src = pic;
-			$(image).load(function () {
-				if(basicW == 0){
-					var rate = 1;
-					var w1 = $(window).width() * 0.9;
-					var h1 = $(window).height() * 0.9;
-					var w2 = this.width;
-					var h2 = this.height;
-					if(w2 > w1 || h2 > h1){
-						rate = w1/w2;
-						rate = rate > h1/h2 ? h1/h2 : rate;
-					}
-					basicW = w2 * rate;
-					basicH = h2 * rate;
+			$(image).on('load', function () {
+				var rate = 1;
+				var w1 = $(window).width() * 0.9;
+				var h1 = $(window).height() * 0.9;
+				var w2 = this.width;
+				var h2 = this.height;
+				if(w2 > w1 || h2 > h1){
+					rate = w1 / w2;
+					rate = rate > h1 / h2 ? h1 / h2 : rate;
 				}
-				
-				imageW = basicW;
-				imageH = basicH;
 			
-				var newW = imageW * scale;
-				var newH = imageH * scale;
+				var initW = Math.round(w2 * rate);
+				var initH = Math.round(h2 * rate);
 
-				canvas.attr('width', newW);
-				canvas.attr('height', newH);
-				if (typeof draftCanvas !== 'undefined') {
-					draftCanvas.attr('width', newW);
-					draftCanvas.attr('height', newH);
-				}
+				canvas.attr('width', initW);
+				canvas.attr('height', initH);
+				draftCanvas.attr('width', initW);
+				draftCanvas.attr('height', initH);
+				applyZoom();
 
-				context.drawImage(image, 0, 0, this.width, this.height, 0, 0, newW, newH);
+				// 先鋪白底，避免透明 PNG 轉存 JPEG 時背景變黑
+				context.fillStyle = '#fff';
+				context.fillRect(0, 0, initW, initH);
+				context.drawImage(image, 0, 0, this.width, this.height, 0, 0, initW, initH);
 				initPaint();
 			
 				cStep = -1;
@@ -464,16 +479,13 @@
 			});    
 		}
 		
-		 $(".toolPainterA, .toolPainterB, .toolPainterLine").hover(
-	   	   function(){
-		      $(this).addClass("selectTool");
-		   },  
-		   function(){  
-		      $(this).removeClass("selectTool");
-		   }
-	   );
+		$(".toolPainterA, .toolPainterB, .toolPainterLine").on('mouseenter', function(){
+			$(this).addClass("selectTool");
+		}).on('mouseleave', function(){  
+			$(this).removeClass("selectTool");
+		});
 	   
-	   //畫布內容
+	   // 初始化雙層畫布畫筆設定
 	   function initPaint(){
 	 		context.lineWidth = $("#lineWidth").val();
 	 		context.strokeStyle = $("#strokeStyle").val();
@@ -491,7 +503,7 @@
 			draftContext.font = "normal 400 10pt Arial";
 	   }
 	   
-	   $(".toolPainterA").click(function(){
+	   $(".toolPainterA").on('click', function(){
 	    	var id = $(this).attr('id');
 	    	if(id == 'save')
 	    		cSave();
@@ -499,24 +511,29 @@
 	    		cUndo();
 	    	else if(id == 'redo')
 	    		cRedo();
-	    	else if(id == 'space'){
+	    	else if(id == 'space')
 	    		cSpace();
-	    	}
+	    	else if(id == 'rotateLeft')
+	    		cRotate(-90);
+	    	else if(id == 'rotateRight')
+	    		cRotate(90);
 	   });
 	   
-	   $(".toolPainterB").click(function(){
+	   $(".toolPainterB").on('click', function(){
 	      $(".toolPainterB").css('background-color', '#F5F3E5');
 	      $(this).css('background-color', '#97CBFF');
 	      var id = $(this).attr('id');
-		   if('select,cut'.indexOf(id) == -1){
+		  if('select,cut'.indexOf(id) == -1){
 			$("#selectDiv").hide();
 			$("#x1").val("X");
 		  }
 	      $("#strokeStyle").val($("#strokeStylebackup").val());
+	      isEraser = false;
 
 	      if(id == 'pencil')
 	      	 $("#drawtype").val('drawLine');
 	      else if(id == 'eraser'){
+	      	 isEraser = true;
 	      	 $("#drawtype").val('drawLine');
 	      	 $("#strokeStylebackup").val($("#strokeStyle").val());
 	      	 $("#strokeStyle").val('#fff');
@@ -531,30 +548,30 @@
 		  else if(id == 'straightLine')
 	      	 $("#drawtype").val('drawStraightLine');
 		  else if(id == 'select')
-			cSelect();	
+			 cSelect();	
 		  else if(id == 'cut')
 			 cCut();
 	      initPaint();
 	   });
 	   
-	   $(".toolPainterLine").click(function(){
+	   $(".toolPainterLine").on('click', function(){
 	      $(".toolPainterLine").css('background-color', '#F5F3E5');
 	      $(this).css('background-color', '#97CBFF');
 	      $("#lineWidth").val($(this).attr('value'));
 	      initPaint();
 	   });
 	   
-	   //輸入文字功能
+	   // 輸入文字功能
 	   function inputWord(){
 	   	  var opt = new Object();
 		  opt.autoOpen = false;
-		  opt.resizable= false;
+		  opt.resizable = false;
 		  opt.closeOnEscape = false;
-		  opt.close = function(){$(this).dialog("destroy");};
+		  opt.close = function(){ $(this).dialog("destroy"); };
 		  opt.title = "請輸入文字";
 		  opt.width = $(window).width() * 0.4;
 		  opt.height = $(window).height() * 0.4;
-		  opt.buttons ={  
+		  opt.buttons = {  
 			 "確定": function(){
 			    endWord();
 				$(this).dialog("destroy");
@@ -568,44 +585,43 @@
 		   for(var i = 10; i <= 100; i++){
 		      wordsize += '<option value="' + i + '" ' + (i==24?'selected':'') + '>' + i + '</option>';  
 		   }
-		   //字體屬性
 		   var content = '<table><tr><td>文字：</td><td><input type="text" id="wordinput" size="30"></td></tr>' + 
 		      '<tr><td>字型：</td><td><select id="wordfontfamily"><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option>' + 
 		   	  '<option value="PMingLiU">新細明體</option><option value="DFKai-sb">標楷體</option></select></td></tr>' +
 		   	  '<tr><td>字型大小：</td><td><select id="wordsize">' + wordsize + '</select></td></tr>' + 
 		   	  '<tr><td>屬性：</td><td>' + 
-		   	  '<span class="wordPainter" id="boldword" style="background-image: url(\'images/painter/bold.gif\');"/>&nbsp;' + 
-		   	  '<span class="wordPainter" id="italicword" style="background-image: url(\'images/painter/italic.gif\');"/>&nbsp;' +
-			  '<span class="wordPainter" id="underlineword" style="background-image: url(\'images/painter/underline.gif\');"/>' +
+		   	  '<span class="wordPainter" id="boldword" style="background-image: url(\'images/painter/bold.gif\');"></span>&nbsp;' + 
+		   	  '<span class="wordPainter" id="italicword" style="background-image: url(\'images/painter/italic.gif\');"></span>&nbsp;' +
+			  '<span class="wordPainter" id="underlineword" style="background-image: url(\'images/painter/underline.gif\');"></span>' +
 		   	  '</td></tr></table>';
 		   $("#canvasDialog").empty().append(content).dialog(opt).dialog("open");
 		   	
-		   $(".wordPainter").hover(
-		   	  function(){
-			     $(this).addClass("selectTool");
-			  },  
-			  function(){  
-			     $(this).removeClass("selectTool");
-			  }
-		   ).click(function(){
+		   $(".wordPainter").on('mouseenter', function(){
+			  $(this).addClass("selectTool");
+		   }).on('mouseleave', function(){  
+			  $(this).removeClass("selectTool");
+		   }).on('click', function(){
 		   	  $(this).toggleClass("selectedTool");
 		   });
 	   }
 	   
-	   //寫入文字
+	   // 寫入文字
 	   function endWord(){
-	   		var fontstyle = ($("#italicword").hasClass("selectedTool")?'italic':'normal') + ' ' + 
-	   			($("#boldword").hasClass("selectedTool")?'700':'400') + ' ' + 
-	   			$("#wordsize").val() + 'pt ' + $("#wordfontfamily").val();
-	   		context.font = fontstyle;
-	 		tool.execute($("#wordinput").val(), $("#wordsize").val(), $("#underlineword").hasClass("selectedTool"), start[0], start[1]);
-			cPush();
+	   		var wordText = ($("#wordinput").val() || "").trim();
+	   		if (wordText !== "") {
+		   		var fontstyle = ($("#italicword").hasClass("selectedTool")?'italic':'normal') + ' ' + 
+		   			($("#boldword").hasClass("selectedTool")?'700':'400') + ' ' + 
+		   			$("#wordsize").val() + 'pt ' + $("#wordfontfamily").val();
+		   		tool.ctx = context;
+		   		context.font = fontstyle;
+		 		tool.execute(wordText, $("#wordsize").val(), $("#underlineword").hasClass("selectedTool"), start[0], start[1]);
+				cPush();
+	   		}
 			start = new Array();
 			drawing = false;
 	   }
 	   
-	   //增加畫布空白長度
-	   //增加畫布空白長度
+	   // 增加畫布空白長度
 		function cSpace(){
 			var opt = new Object();
 			opt.autoOpen = false;
@@ -617,34 +633,28 @@
 			opt.height = $(window).height() * 0.2;
 			opt.buttons = {  
 				"確定": function(){
-					var isOk = true;
-					if(isNaN($("#spacelength").val())){
-						alert('請輸入數值');
-						isOk = false;
-					} else {
-						var length = parseInt($("#spacelength").val(), 10);
-						// 1. 先把原本主畫布的影像備份起來
-						var tmp = context.getImageData(0, 0, canvas[0].width, canvas[0].height);
-						
-						// 計算新的總高度
-						length = length + canvas[0].height;
-						
-						// 2. 【關鍵修改】同步拉長主畫布與草稿層的高度！
-						canvas.attr('height', length);
-						draftCanvas.attr('height', length);
-						
-						// 3. 幫主畫布填上白色底，再把備份的影像貼回原位
-						context.clearRect(0, 0, canvas[0].width, length);
-						context.fillStyle = '#fff';
-						context.fillRect(0, 0, canvas[0].width, length);
-						context.putImageData(tmp, 0, 0);
-						
-						// 4. 因為畫布大小改變會清空畫筆設定，所以必須重新初始化兩層的畫筆
-						initPaint();
+					var rawVal = ($("#spacelength").val() || "").trim();
+					var addLen = parseInt(rawVal, 10);
+					if (rawVal === "" || isNaN(addLen) || addLen <= 0) {
+						alert('請輸入大於 0 的數值');
+						return;
 					}
-					if(isOk) {
-						$(this).dialog("destroy");
-					}
+
+					var tmp = context.getImageData(0, 0, canvas[0].width, canvas[0].height);
+					var newHeight = canvas[0].height + addLen;
+
+					canvas.attr('height', newHeight);
+					draftCanvas.attr('height', newHeight);
+					applyZoom();
+
+					context.clearRect(0, 0, canvas[0].width, newHeight);
+					context.fillStyle = '#fff';
+					context.fillRect(0, 0, canvas[0].width, newHeight);
+					context.putImageData(tmp, 0, 0);
+
+					initPaint();
+					cPush();
+					$(this).dialog("destroy");
 				},
 				"關閉": function(){
 					$(this).dialog("destroy");                    
@@ -659,6 +669,13 @@
 	      var color = $(this).val(); // 直接取得 #RRGGBB 格式
 	      $("#strokeStyle").val(color);
 	      $("#strokeStylebackup").val(color);
+	      // 橡皮擦模式下改選顏色，自動切回鉛筆避免狀態衝突
+	      if (isEraser) {
+	         isEraser = false;
+	         $(".toolPainterB").css('background-color', '#F5F3E5');
+	         $("#pencil").css('background-color', '#97CBFF');
+	         $("#drawtype").val('drawLine');
+	      }
 	      initPaint();
 	   });
 
@@ -670,98 +687,112 @@
 	  
 	  $("#undo,#redo").addClass('selectedTool').attr('disabled', true);
 	      
+	  // 放大縮小（純視覺無損縮放）
 	  $("#magnifier").slider({
-		value:100,
-		min: 50,
+		value: 100,
+		min: 25,
 		max: 250,
 		step: 25,
-		slide: function( event, ui ) {
-			$( "#amount" ).empty().append(ui.value + '%');
-			scale = ui.value/100;
-			drawImage(cPushArray[cStep]);
+		slide: function(event, ui) {
+			$("#amount").text(ui.value + '%');
+			scale = ui.value / 100;
+			applyZoom();
 		}
 	  });
 	  
-	  // 裁切選取區塊功能
-	  $("#selectDiv").resizable().draggable().mouseup(function (){    
-			$("#x1").val($('#selectDiv').offset().left);
-			$("#y1").val($('#selectDiv').offset().top);
-			$("#x2").val($('#selectDiv').offset().left + parseInt($('#selectDiv').css('width').replace('px',''), 10));
-			$("#y2").val($('#selectDiv').offset().top + parseInt($('#selectDiv').css('height').replace('px',''),  10));
-						
-			var x1 = $("#x1").val();
-			var y1 = $("#y1").val();
-			var x2 = $("#x2").val();
-			var y2 = $("#y2").val();
-			var cx1 = canvas.offset().left;
-			var cy1 = canvas.offset().top;
-			var cx2 = canvas.offset().left + canvas[0].width;
-			var cy2 = canvas.offset().top + canvas[0].height;
-						
-			if(x1 < cx1)
-				$("#x1").val(cx1);
-			if(y1 < cy1)
-				$("#y1").val(cx1);
-			if(cx2 < x2)
-				$("#x2").val(cx2);
-			if(cy2 < y2)
-				$("#y2").val(cy2);
-						
-			if(cx2 < x1 || cy2 < y1 || x2 < cx1 || y2 < cy1)
+	  // 同步計算裁切框座標（相容任意縮放倍率）
+	  function updateSelectCoords() {
+			var selOffset = $('#selectDiv').offset();
+			var x1 = selOffset.left;
+			var y1 = selOffset.top;
+			var x2 = x1 + $('#selectDiv').width();
+			var y2 = y1 + $('#selectDiv').height();
+
+			var cOffset = canvas.offset();
+			var cx1 = cOffset.left;
+			var cy1 = cOffset.top;
+			var cx2 = cx1 + canvas.width();
+			var cy2 = cy1 + canvas.height();
+
+			if (cx2 <= x1 || cy2 <= y1 || x2 <= cx1 || y2 <= cy1) {
 				$("#x1").val("X");
-       });
+				return;
+			}
+
+			$("#x1").val(Math.max(x1, cx1));
+			$("#y1").val(Math.max(y1, cy1));
+			$("#x2").val(Math.min(x2, cx2));
+			$("#y2").val(Math.min(y2, cy2));
+	  }
+
+	  $("#selectDiv")
+			.resizable({ stop: updateSelectCoords })
+			.draggable({ stop: updateSelectCoords })
+			.on('mouseup', updateSelectCoords);
 
 	  function cSelect(){
-			$("#selectDiv").show();
-			
-			var left = canvas.attr('width') / 2 - 50;
-			var top = canvas.attr('height') / 2 - 50;
-			$("#selectDiv").css("width", 100).css("height", 100).css('left', left).css('top', top);
-			
-			$("#x1").val($('#selectDiv').offset().left);
-			$("#y1").val($('#selectDiv').offset().top);
-			$("#x2").val($('#selectDiv').offset().left + parseInt($('#selectDiv').css('width').replace('px',''), 10));
-			$("#y2").val($('#selectDiv').offset().top + parseInt($('#selectDiv').css('height').replace('px',''),  10));
+			var dispW = canvas.width();
+			var dispH = canvas.height();
+			var boxW = Math.min(100, dispW);
+			var boxH = Math.min(100, dispH);
+			var left = Math.max(0, Math.round(dispW / 2 - boxW / 2));
+			var top = Math.max(0, Math.round(dispH / 2 - boxH / 2));
+
+			$("#selectDiv").show().css({
+				width: boxW + 'px',
+				height: boxH + 'px',
+				left: left + 'px',
+				top: top + 'px'
+			});
+			updateSelectCoords();
 		}
 	   
 	   function cCut(){
 			if($("#x1").val() != 'X'){
 				var x = confirm('是否確定要將圖片進行裁切？');
 				if(x){
-					$("#drawtype").val('');
-					var x1 = parseInt($("#x1").val(), 10) - canvas.offset().left;
-					var y1 = parseInt($("#y1").val(), 10) - canvas.offset().top;
-					var x2 = parseInt($("#x2").val(), 10) - canvas.offset().left;
-					var y2 = parseInt($("#y2").val(), 10) - canvas.offset().top;
+					var cOffset = canvas.offset();
+					var ratioX = canvas.width() ? (canvas[0].width / canvas.width()) : 1;
+					var ratioY = canvas.height() ? (canvas[0].height / canvas.height()) : 1;
+
+					var x1 = Math.round((parseFloat($("#x1").val()) - cOffset.left) * ratioX);
+					var y1 = Math.round((parseFloat($("#y1").val()) - cOffset.top) * ratioY);
+					var x2 = Math.round((parseFloat($("#x2").val()) - cOffset.left) * ratioX);
+					var y2 = Math.round((parseFloat($("#y2").val()) - cOffset.top) * ratioY);
+
+					// 邊界夾緊避免超出實際像素範圍
+					x1 = Math.max(0, Math.min(x1, canvas[0].width));
+					y1 = Math.max(0, Math.min(y1, canvas[0].height));
+					x2 = Math.max(0, Math.min(x2, canvas[0].width));
+					y2 = Math.max(0, Math.min(y2, canvas[0].height));
 					
-					// 計算新的寬高
 					var newWidth = x2 - x1;
 					var newHeight = y2 - y1;
+					if (newWidth <= 0 || newHeight <= 0) {
+						alert('裁切範圍無效，請重新選取');
+						return;
+					}
 
-					// 取得主畫布裁切範圍內的影像資料 (修正：後兩個參數應該是寬高)
 					var tmp = context.getImageData(x1, y1, newWidth, newHeight);
 
-					// 【關鍵修改】同時改變「主畫布」與「草稿畫布」的大小！
 					canvas.attr('width', newWidth);
 					canvas.attr('height', newHeight);
 					draftCanvas.attr('width', newWidth);
 					draftCanvas.attr('height', newHeight);
+					applyZoom();
 
-					// 將裁切後的影像貼回主畫布 (直接貼在 0, 0 的起始位置即可)
+					// 將裁切後的影像貼回主畫布
 					context.putImageData(tmp, 0, 0);
 
 					// 恢復 UI 狀態
+					isEraser = false;
 					$(".toolPainterB").css('background-color', '#F5F3E5');
 					$("#pencil").css('background-color', '#97CBFF');
 					$("#drawtype").val('drawLine');
 					
-					// 重新初始化兩層畫布的畫筆設定 
-					// (注意：HTML5 Canvas 只要一改變寬高，內部的畫筆樣式就會被系統清空，所以一定要重新 init)
 					initPaint();
 					
-					// 重新記錄歷史
-					cStep = -1;
-					cPushArray = new Array();
+					// 保留歷史紀錄，讓裁切也能 Undo / Redo
 					cPush();
 					
 					$("#x1").val('X');
@@ -771,6 +802,44 @@
 				alert('請選取裁切範圍');
 			}
 		}
+
+		// 旋轉畫布 (degree: -90 為向左旋轉90度，90 為向右旋轉90度)
+		function cRotate(degree) {
+			$("#selectDiv").hide();
+			$("#x1").val("X");
+
+			var oldW = canvas[0].width;
+			var oldH = canvas[0].height;
+			if (oldW === 0 || oldH === 0) return;
+
+			var tempCanvas = document.createElement('canvas');
+			tempCanvas.width = oldW;
+			tempCanvas.height = oldH;
+			tempCanvas.getContext('2d').drawImage(canvas[0], 0, 0);
+
+			var newW = oldH;
+			var newH = oldW;
+
+			canvas.attr('width', newW);
+			canvas.attr('height', newH);
+			draftCanvas.attr('width', newW);
+			draftCanvas.attr('height', newH);
+			applyZoom();
+
+			context.save();
+			context.fillStyle = '#fff';
+			context.fillRect(0, 0, newW, newH);
+			context.translate(newW / 2, newH / 2);
+			context.rotate(degree * Math.PI / 180);
+			context.drawImage(tempCanvas, -oldW / 2, -oldH / 2);
+			context.restore();
+
+			initPaint();
+			cPush();
+		}
+
+		// 載入預設底圖
+		drawImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA0EAAAHjCAIAAABq1INCAAAAA3NCSVQICAjb4U/gAAABmHpUWHRSYXcgcHJvZmlsZSB0eXBlIEFQUDEAADiNzVNJbsMwDLz7FXkCF4mSn+M4UhGgaIv8/9ChJTtOkDa5FKgIm9R4uMoa3spHuZznw9fls57fy3DwZZaHMIZRJiLK1JYSsRC7xrutrpVhCYzU99K0jTlR2PGmpuceM4JhapzwNAd/jS1OWNOqQBBjoke5yYvc5QitwpZshxftVrzFp16T0BS8B+l4Xvte22djHTWaGVvUrAGVm6J+Dar4Qr9LT9LyyrW/KPDNHbvtmze/dTZ6N3/ro5iAxCvO1iw+3uGlWZLv4sg2U9nPRnocoDd4ss2zzTxv/g/3tZ5yrWUBwhQM/5YtG95Y3HlHeHtlEfWFRRR2s+IihinN+CtTl0pHyEgzM1UWiGtffmQzJ+jAE8cFy/icsTtB6iLKSUSCCBcJ4BdgZauEe9a05C3Im6mAExArcPl7qXX28bDfQx/acgtY/MS8U5yjv8HC+XDcTfXnlTsbV+Upl1buC3E3Lr/EPfnNm6ndS+/FOyGtREeZn7n/w5UqehqHb9AiITX/x81LAAAI2ElEQVR4nO3WQQ0AIBDAMMC/50MDL7KkVbDn9swsAABSzu8AAACeeTgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0eDgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0eDgAgB4PBwDQ4+EAAHo8HABAj4cDAOjxcAAAPR4OAKDHwwEA9Hg4AIAeDwcA0OPhAAB6PBwAQI+HAwDo8XAAAD0eDgCgx8MBAPR4OACAHg8HANDj4QAAejwcAECPhwMA6PFwAAA9Hg4AoMfDAQD0');
    });
 </script>
 </head>
@@ -787,63 +856,70 @@
 <div class="screenCanvas" style="float:left;width:7%;">
 	<table style="margin-left: auto;margin-right: auto;">
 		<tr>
-			<td><span class="toolPainterA" id="save" style="background-image: url('images/painter/save.gif');"/></td>
-			<td><span class="toolPainterA" id="undo" style="background-image: url('images/painter/undo.gif');"/></td>
-			<td><span class="toolPainterA" id="redo" style="background-image: url('images/painter/redo.gif');"/></td>
+			<td><span class="toolPainterA" id="save" style="background-image: url('images/painter/save.gif');"></span></td>
+			<td><span class="toolPainterA" id="undo" style="background-image: url('images/painter/undo.gif');"></span></td>
+			<td><span class="toolPainterA" id="redo" style="background-image: url('images/painter/redo.gif');"></span></td>
 		</tr>
 	</table>
 	<table style="margin-left: auto;margin-right: auto;">
 		<tr>
-			<td><span class="toolPainterB" id="eraser" style="background-image: url('images/painter/eraser.gif');"/></td>
-			<td><span class="toolPainterB" id="pencil" style="background-image: url('images/painter/pencil.gif');background-color:#97CBFF;"/></td>
+			<td><span class="toolPainterB" id="eraser" style="background-image: url('images/painter/eraser.gif');"></span></td>
+			<td><span class="toolPainterB" id="pencil" style="background-image: url('images/painter/pencil.gif');background-color:#97CBFF;"></span></td>
 		</tr>
 		<tr>
-			<td><span class="toolPainterB" id="straightLine" style="background-image: url('images/painter/straightLine.gif');"/></td>
-			<td><span class="toolPainterB" id="arrow" style="background-image: url('images/painter/arrow.gif');"/></td>
+			<td><span class="toolPainterB" id="straightLine" style="background-image: url('images/painter/straightLine.gif');"></span></td>
+			<td><span class="toolPainterB" id="arrow" style="background-image: url('images/painter/arrow.gif');"></span></td>
 		</tr>
 		<tr>
-			<td><span class="toolPainterB" id="rectangle" style="background-image: url('images/painter/rectangle.gif');"/></td>
-			<td><span class="toolPainterB" id="ellipse" style="background-image: url('images/painter/ellipse.gif');"/></td>
-			
+			<td><span class="toolPainterB" id="rectangle" style="background-image: url('images/painter/rectangle.gif');"></span></td>
+			<td><span class="toolPainterB" id="ellipse" style="background-image: url('images/painter/ellipse.gif');"></span></td>
 		</tr>
 		<tr>
-			<td><span class="toolPainterB" id="text" style="background-image: url('images/painter/text.gif');"/></td>
-			<td><span class="toolPainterA" id="space" style="background-image: url('images/painter/space.gif');"/></td>
+			<td><span class="toolPainterB" id="text" style="background-image: url('images/painter/text.gif');"></span></td>
+			<td><span class="toolPainterA" id="space" style="background-image: url('images/painter/space.gif');"></span></td>
 		</tr>
 		<tr>
-			<td><span class="toolPainterB" id="select" style="background-image: url('images/painter/select.gif');"/></td>
-			<td><span class="toolPainterB" id="cut" style="background-image: url('images/painter/cut.gif');"/></td>
+			<td><span class="toolPainterB" id="select" style="background-image: url('images/painter/select.gif');"></span></td>
+			<td><span class="toolPainterB" id="cut" style="background-image: url('images/painter/cut.gif');"></span></td>
+		</tr>
+		<tr>
+			<td>
+				<span class="toolPainterA" id="rotateLeft" title="向左旋轉90度"
+					  style="text-align:center; line-height:22px; cursor:pointer; font-weight:bold;">↺</span>
+			</td>
+			<td>
+				<span class="toolPainterA" id="rotateRight" title="向右旋轉90度"
+					  style="text-align:center; line-height:22px; cursor:pointer; font-weight:bold;">↻</span>
+			</td>
 		</tr>
 	</table>
 	<br>
 	<table style="margin-left:auto;margin-right:auto;">
 		<tr>
-			<td align="center"><span value="1" class="toolPainterLine" style="background-image: url('images/painter/line1.gif');background-color:#97CBFF;"/></td>
+			<td align="center"><span value="1" class="toolPainterLine" style="background-image: url('images/painter/line1.gif');background-color:#97CBFF;"></span></td>
 		</tr>
 		<tr>
-			<td align="center"><span value="3" class="toolPainterLine" style="background-image: url('images/painter/line2.gif');"/></td>
+			<td align="center"><span value="3" class="toolPainterLine" style="background-image: url('images/painter/line2.gif');"></span></td>
 		</tr>
 		<tr>
-			<td align="center"><span value="5" class="toolPainterLine" style="background-image: url('images/painter/line3.gif');"/></td>
+			<td align="center"><span value="5" class="toolPainterLine" style="background-image: url('images/painter/line3.gif');"></span></td>
 		</tr>
 		<tr>
-			<td align="center"><span value="7" class="toolPainterLine" style="background-image: url('images/painter/line4.gif');"/></td>
+			<td align="center"><span value="7" class="toolPainterLine" style="background-image: url('images/painter/line4.gif');"></span></td>
 		</tr>
 	</table>
 	<table style="margin-left:auto;margin-right:auto;">
-		<tr><td colspan="2" style="font-weight:700;align:center;">調色盤</td></tr>
+		<tr><td colspan="2" style="font-weight:700;text-align:center;">調色盤</td></tr>
 		<tr>
 			<td><input type="color" id="colorPickerA" value="#000000" style="border: none; width: 26px; height: 26px; cursor: pointer; padding: 0;"></td>
 			<td><input type="color" id="colorPickerB" value="#000000" style="border: none; width: 26px; height: 26px; cursor: pointer; padding: 0;"></td>
 		</tr>
 	</table>
 	<br>
-	<div id="magnifier"></div>
-	<center>
+	<div id="magnifier" style="width:90%;margin:0px auto;"></div>
+	<div style="text-align:center;">
 		<span id="amount">100%</span>
-		<br>
-		<span style="font-size:10pt;color:red;">(請注意放大縮小時，圖片的品質會改變。)</span>
-	</center>
+	</div>
 </div>
 <div class="screenCanvas" style="float:right;width:92%;overflow:auto;">
 	<div style="position: relative; display: inline-block;">
@@ -852,6 +928,6 @@
 		<canvas id="draftCanvas" width="640" height="680" style="position: absolute; left: 0; top: 0; z-index: 2;"></canvas>
 	</div>
 </div>
-<div id="canvasDialog"/>
+<div id="canvasDialog"></div>
 </body>
 </html>
